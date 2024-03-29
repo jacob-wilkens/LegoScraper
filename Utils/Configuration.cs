@@ -30,6 +30,7 @@ namespace LegoScraper.Utils
                 .AddRetry(new RetryStrategyOptions()
                 {
                     ShouldHandle = new PredicateBuilder()
+                  .Handle<NoSuchElementException>()
                   .Handle<WebDriverException>()
                   .Handle<StaleElementReferenceException>(),
                     MaxRetryAttempts = maxRetryAttempts,

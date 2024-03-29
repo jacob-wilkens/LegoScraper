@@ -9,9 +9,7 @@ using Serilog;
 
 Log.Logger = Configuration.SetupLogging();
 
-try
-{
-  using var host = new HostBuilder()
+using var host = new HostBuilder()
          .ConfigureServices((hostContext, services) =>
          {
            services.AddHostedService<Worker>();
@@ -23,17 +21,18 @@ try
          .UseSerilog()
          .Build();
 
-  host.Run();
+var driver = host.Services.GetRequiredService<IWebDriver>();
+
+try
+{
+  await host.RunAsync();
 }
 catch (Exception ex)
 {
-  // Ignore WebDriverException
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-  if (ex.GetType().IsAssignableFrom(typeof(WebDriverException))) ex = null;
-
   Log.Fatal(ex, "Host terminated unexpectedly");
 }
 finally
 {
+  driver.Quit();
   Log.CloseAndFlush();
 }

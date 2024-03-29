@@ -17,7 +17,7 @@ namespace LegoScraper.Services
         private readonly IWebDriver _driver = driver;
         private bool ClickedCookieButton { get; set; } = false;
 
-        public void ProcessData(string path)
+        public void ProcessData(string path, CancellationToken token)
         {
             var isMiniFig = path.Contains("mini-fig");
             List<CsvRecord> data;
@@ -46,10 +46,12 @@ namespace LegoScraper.Services
             writer.Flush();
 
             var _pipeline = Configuration.SetupResiliencePipeline(_logger);
-            var context = ResilienceContextPool.Shared.Get();
+            var context = ResilienceContextPool.Shared.Get(token);
 
             foreach (var record in data)
             {
+                if (token.IsCancellationRequested) break;
+
                 context.Properties.Set(ResilienceKeys.ItemNumber, record.ItemNumber);
                 try
                 {
@@ -68,20 +70,14 @@ namespace LegoScraper.Services
             ResilienceContextPool.Shared.Return(context);
         }
 
-        public void Close()
-        {
-            _driver.Close();
-            _driver.Dispose();
-        }
-
         private LegoRecord GetData(bool isMiniFig, CsvRecord record)
         {
             var data = new LegoRecord
             {
                 ItemNumber = record.ItemNumber,
                 Condition = record.Condition,
-                New = "N/A",
-                Used = "N/A"
+                New = Constants.EmptyRecord,
+                Used = Constants.EmptyRecord
             };
 
             var url = isMiniFig ? Constants.GetMiniFigUri(record.ItemNumber) : Constants.GetLegoSetUri(record.ItemNumber);
@@ -94,14 +90,14 @@ namespace LegoScraper.Services
                 ClickedCookieButton = true;
             }
 
-            if (_driver.PageSource.Contains("Item Not Found"))
+            if (_driver.PageSource.Contains("Item Not Found") || _driver.PageSource.Contains("No Item(s) were found. Please try again!"))
             {
                 _logger.LogDebug("Item not found: {itemNumber}", record.ItemNumber);
                 return data;
             }
 
-            string newPrice = "N/A";
-            string usedPrice = "N/A";
+            string newPrice = Constants.EmptyRecord;
+            string usedPrice = Constants.EmptyRecord;
 
             switch (record.Condition)
             {

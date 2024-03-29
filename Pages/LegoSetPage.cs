@@ -30,8 +30,8 @@ namespace LegoScraper.Pages
 
                 return
                 [
-                    newPriceMatch.Success ? newPriceMatch.Groups[1].Value : "N/A",
-                    usedPriceMatch.Success ? usedPriceMatch.Groups[1].Value : "N/A"
+                    newPriceMatch.Success ? newPriceMatch.Groups[1].Value : Constants.EmptyRecord,
+                    usedPriceMatch.Success ? usedPriceMatch.Groups[1].Value : Constants.EmptyRecord
                 ];
             }
 
@@ -40,7 +40,7 @@ namespace LegoScraper.Pages
             var txt = cellTable.Text;
             var match = AveragePricePattern.Match(txt);
 
-            return [match.Success ? match.Groups[1].Value : "N/A"];
+            return [match.Success ? match.Groups[1].Value : Constants.EmptyRecord];
         }
     }
 }
