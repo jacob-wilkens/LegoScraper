@@ -15,13 +15,25 @@ namespace LegoScraper.Services
     {
         private readonly ILogger<Processor> _logger = logger;
         private readonly IWebDriver _driver = driver;
+        private bool ClickedCookieButton { get; set; } = false;
 
         public void ProcessData(string path)
         {
             var isMiniFig = path.Contains("mini-fig");
-            var data = ReadCsvData(path).ToArray();
+            List<CsvRecord> data;
 
-            if (data == null || data.Length == 0)
+            try
+            {
+                data = ReadCsvData(path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("{ex}", ex);
+                _logger.LogError("Error reading CSV file {path}", path);
+                return;
+            }
+
+            if (data == null || data.Count == 0)
             {
                 _logger.LogWarning("No data to process.");
                 return;
@@ -30,25 +42,25 @@ namespace LegoScraper.Services
             var file = isMiniFig ? Constants.MiniFigCsvFile : Constants.LegoSetCsvFile;
             using var writer = new StreamWriter(file, false);
 
-            writer.WriteLine("ItemNumber,Condition,Value");
+            writer.WriteLine("Item Number,Condition,New,Used");
             writer.Flush();
 
             var _pipeline = Configuration.SetupResiliencePipeline(_logger);
             var context = ResilienceContextPool.Shared.Get();
 
-            for (int i = 0; i < data.Length; i++)
+            foreach (var record in data)
             {
-                var record = data[i];
                 context.Properties.Set(ResilienceKeys.ItemNumber, record.ItemNumber);
                 try
                 {
-                    record.Value = _pipeline.Execute((ctx) => GetData(isMiniFig, record, i), context);
-                    writer.WriteLine($"{record.ItemNumber},{record.Condition},{record.Value}");
+                    var entry = _pipeline.Execute((ctx) => GetData(isMiniFig, record), context);
+                    writer.WriteLine($"{entry.ItemNumber},{entry.Condition},{entry.New},{entry.Used}");
                     writer.Flush();
                     Thread.Sleep(2_500);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    _logger.LogDebug("{ex}", ex);
                     _logger.LogError("Error processing record {ItemNumber}", record.ItemNumber);
                 }
             }
@@ -62,21 +74,78 @@ namespace LegoScraper.Services
             _driver.Dispose();
         }
 
-        private string GetData(bool isMiniFig, CsvRecord record, int index)
+        private LegoRecord GetData(bool isMiniFig, CsvRecord record)
         {
+            var data = new LegoRecord
+            {
+                ItemNumber = record.ItemNumber,
+                Condition = record.Condition,
+                New = "N/A",
+                Used = "N/A"
+            };
+
             var url = isMiniFig ? Constants.GetMiniFigUri(record.ItemNumber) : Constants.GetLegoSetUri(record.ItemNumber);
             _driver.Navigate().GoToUrl(url);
+
+            // Click the cookie button if it hasn't been clicked yet
+            if (!ClickedCookieButton)
+            {
+                Web.WaitAndClick(_driver, Constants.CookieButton);
+                ClickedCookieButton = true;
+            }
 
             if (_driver.PageSource.Contains("Item Not Found"))
             {
                 _logger.LogDebug("Item not found: {itemNumber}", record.ItemNumber);
-                return "N/A";
+                return data;
             }
 
-            var price = isMiniFig ? MiniFigPage.Scrape(_driver, record.Condition, index) : LegoSetPage.Scrape(_driver, record.Condition, index);
-            _logger.LogDebug("Price: {price}", price);
+            string newPrice = "N/A";
+            string usedPrice = "N/A";
 
-            return price;
+            switch (record.Condition)
+            {
+                case "B":
+                    var prices = GetPrices(record.ItemNumber, isMiniFig, record.Condition);
+                    newPrice = prices[0];
+                    usedPrice = prices[1];
+                    break;
+                case "N":
+                    newPrice = GetNewPrice(record.ItemNumber, isMiniFig, record.Condition);
+                    break;
+                case "U":
+                    usedPrice = GetUsedPrice(record.ItemNumber, isMiniFig, record.Condition);
+                    break;
+            }
+
+            data.New = newPrice;
+            data.Used = usedPrice;
+
+            return data;
+        }
+
+        private List<string> GetPrices(string itemNumber, bool isMiniFig, string condition)
+        {
+            var prices = isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition);
+            _logger.LogDebug("Item Number {i}: New price: {newPrice}, Used price: {usedPrice}", itemNumber, prices[0], prices[1]);
+
+            return prices;
+        }
+
+        private string GetNewPrice(string itemNumber, bool isMiniFig, string condition)
+        {
+            var newPrice = (isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition))[0];
+            _logger.LogDebug("Item Number {itemNumber}: New price: {newPrice}", itemNumber, newPrice);
+
+            return newPrice;
+        }
+
+        private string GetUsedPrice(string itemNumber, bool isMiniFig, string condition)
+        {
+            var usedPrice = (isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition))[0];
+            _logger.LogDebug("Item Number {itemNumber}: Used price: {usedPrice}", itemNumber, usedPrice);
+
+            return usedPrice;
         }
 
         private static List<CsvRecord> ReadCsvData(string path)

@@ -35,7 +35,7 @@ namespace LegoScraper.Utils
                     MaxRetryAttempts = maxRetryAttempts,
                     OnRetry = args =>
                     {
-                        logger.LogWarning("Retrying for {itemNumber} attempt {retryCount} of {maxRetryAttempts} for {exception}", args.Context.Properties.GetValue(ResilienceKeys.ItemNumber, ""), args.AttemptNumber, maxRetryAttempts, args.Outcome.Exception?.Message);
+                        logger.LogDebug("Retrying for {itemNumber} attempt {retryCount} of {maxRetryAttempts} for {exception}", args.Context.Properties.GetValue(ResilienceKeys.ItemNumber, ""), args.AttemptNumber, maxRetryAttempts, args.Outcome.Exception);
                         return ValueTask.CompletedTask;
                     }
                 })

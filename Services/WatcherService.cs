@@ -25,14 +25,11 @@ namespace LegoScraper.Services
             };
 
             _watcher.Created += Created;
-
-            _logger.LogDebug($"[{DateTime.Now:O}] {Name}: Instance created.");
         }
 
         public void Start()
         {
             _watcher.EnableRaisingEvents = true;
-            _logger.LogDebug($"[{DateTime.Now:O}] {Name}: Started.");
         }
 
         private void Created(object sender, FileSystemEventArgs e)
@@ -45,7 +42,6 @@ namespace LegoScraper.Services
                 return;
             }
 
-            _logger.LogInformation($"[{DateTime.Now:O}] {Name}: {e.Name} arrived to watcher.");
             _queue.Produce(e).Wait();
         }
     }

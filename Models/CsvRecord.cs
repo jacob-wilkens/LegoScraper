@@ -9,13 +9,10 @@ namespace LegoScraper.Models
         public string ItemNumber { get; set; }
         [Name("Condition")]
         public string Condition { get; set; }
-        [Name("Value")]
-        public string? Value { get; set; }
 
         public CsvRecord()
         {
             ItemNumber ??= string.Empty;
-            Value ??= string.Empty;
             Condition ??= string.Empty;
         }
     }

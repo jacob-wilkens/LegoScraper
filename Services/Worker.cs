@@ -36,7 +36,7 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
 
   public override async Task StopAsync(CancellationToken cancellationToken)
   {
-    _logger.LogInformation("Worker stopping at: {time}", DateTimeOffset.Now);
+    _logger.LogDebug("Worker stopping at: {time}", DateTimeOffset.Now);
     _processor.Close();
     await base.StopAsync(cancellationToken);
   }

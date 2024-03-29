@@ -1,3 +1,5 @@
+using OpenQA.Selenium;
+
 namespace LegoScraper.Utils
 {
     public static class Constants
@@ -5,6 +7,7 @@ namespace LegoScraper.Utils
         public const string MiniFigCsvFile = "updated_minifigs.csv";
         public const string BaseUrl = "https://www.bricklink.com/v2/catalog/catalogitem.page";
         public const string LegoSetCsvFile = "updated_lego_sets.csv";
+        public static By CookieButton => By.XPath("//div[@id='js-btn-section']//button[contains(text(),'Just necessary')]");
 
         public static Uri GetLegoSetUri(string id)
         {

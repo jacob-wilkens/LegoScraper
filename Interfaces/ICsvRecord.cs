@@ -4,6 +4,5 @@ namespace LegoScraper.Interfaces
     {
         string ItemNumber { get; set; }
         string Condition { get; set; }
-        string? Value { get; set; }
     }
 }
