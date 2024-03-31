@@ -1,14 +1,14 @@
 using LegoScraper.Interfaces;
-using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 
 namespace LegoScraper.Services
 {
-    public class ScraperWindowLogger(IScraperWindow scraperWindow) : ILogger
+    public class ScraperSink(IScraperWindow scraperWindow) : ILogEventSink
     {
         private readonly IScraperWindow _scraperWindow = scraperWindow;
 
-        public void Write(LogEvent logEvent)
+        public void Emit(LogEvent logEvent)
         {
             _scraperWindow.LogContent(logEvent);
         }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Konsole;
 using LegoScraper.Interfaces;
 using Serilog.Events;

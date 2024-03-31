@@ -1,4 +1,6 @@
+using LegoScraper.Interfaces;
 using LegoScraper.Models;
+using LegoScraper.Services;
 using Microsoft.Extensions.Logging;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -11,13 +13,13 @@ namespace LegoScraper.Utils
 {
     public static class Configuration
     {
-        public static Serilog.ILogger SetupLogging()
+        public static Serilog.ILogger SetupLogging(IScraperWindow scraperWindow)
         {
             return new LoggerConfiguration()
                   .MinimumLevel.Debug()
                   .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                   .Enrich.FromLogContext()
-                  .WriteTo.Console()
+                  .WriteTo.Sink(new ScraperSink(scraperWindow))
                   .Filter.ByExcluding(FilterLogMessage)
                   .CreateLogger();
         }
