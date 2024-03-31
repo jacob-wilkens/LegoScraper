@@ -9,6 +9,8 @@ using Serilog;
 
 Log.Logger = Configuration.SetupLogging();
 
+var scraperWindow = new ScraperWindow();
+
 using var host = new HostBuilder()
          .ConfigureServices((hostContext, services) =>
          {
@@ -17,9 +19,10 @@ using var host = new HostBuilder()
            services.AddSingleton<Queue>();
            services.AddSingleton<IProcessor, Processor>();
            services.AddSingleton<IWebDriver, ChromeDriver>((_) => Configuration.SetupChromeDriver());
+           services.AddSingleton<IScraperWindow>(scraperWindow);
          })
-         .UseSerilog()
-         .Build();
+        .UseSerilog(new ScraperWindowLogger(scraperWindow))
+        .Build();
 
 var driver = host.Services.GetRequiredService<IWebDriver>();
 

@@ -11,10 +11,11 @@ using Polly;
 
 namespace LegoScraper.Services
 {
-    public class Processor(ILogger<Processor> logger, IWebDriver driver) : IProcessor
+    public class Processor(ILogger<Processor> logger, IWebDriver driver, IScraperWindow scraperWindow) : IProcessor
     {
         private readonly ILogger<Processor> _logger = logger;
         private readonly IWebDriver _driver = driver;
+        private readonly IScraperWindow _scraperWindow = scraperWindow;
         private bool ClickedCookieButton { get; set; } = false;
 
         public void ProcessData(string path, CancellationToken token)
@@ -48,11 +49,16 @@ namespace LegoScraper.Services
             var _pipeline = Configuration.SetupResiliencePipeline(_logger);
             var context = ResilienceContextPool.Shared.Get(token);
 
+            var progressTotal = data.Count;
+            var progress = 0;
+
             foreach (var record in data)
             {
                 if (token.IsCancellationRequested) break;
 
                 context.Properties.Set(ResilienceKeys.ItemNumber, record.ItemNumber);
+                _scraperWindow.Refresh(progress * 100 / progressTotal, $"Processing {record.ItemNumber}");
+
                 try
                 {
                     var entry = _pipeline.Execute((ctx) => GetData(isMiniFig, record), context);
@@ -65,6 +71,8 @@ namespace LegoScraper.Services
                     _logger.LogDebug("{ex}", ex);
                     _logger.LogError("Error processing record {ItemNumber}", record.ItemNumber);
                 }
+
+                progress += 1;
             }
 
             ResilienceContextPool.Shared.Return(context);
