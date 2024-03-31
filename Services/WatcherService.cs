@@ -12,6 +12,7 @@ namespace LegoScraper.Services
         private readonly Queue _queue;
         private static string Name => nameof(WatcherService);
         private static Regex CsvExtension = new Regex(@"(sets|mini-figs).*\.csv$");
+        public List<string> Files { get; } = [];
 
         public WatcherService(ILogger<WatcherService> logger, Queue queue)
         {
@@ -34,14 +35,15 @@ namespace LegoScraper.Services
 
         private void Created(object sender, FileSystemEventArgs e)
         {
-            if (e.ChangeType != WatcherChangeTypes.Created || e.Name == Constants.LegoSetCsvFile || e.Name == Constants.MiniFigCsvFile) return;
+            if (e.Name == null || e.ChangeType != WatcherChangeTypes.Created || Files.Any(i => e.Name.Contains(i))) return;
 
-            if (!CsvExtension.IsMatch(e.Name!))
+            if (!CsvExtension.IsMatch(e.Name))
             {
                 _logger.LogWarning($"Cannot process the file because it is not a CSV and does not match the pattern 'sets*.csv' or 'mini-fig*.csv'. File : {e.Name}");
                 return;
             }
 
+            Files.Add(e.Name.Replace(".csv", ""));
             _queue.Produce(e).Wait();
         }
     }

@@ -20,9 +20,11 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
       await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
       _logger.LogInformation("[{date}] {fileName} arrived to worker.", $"{DateTime.Now:O}", @event.Name);
 
+      bool processed;
+
       try
       {
-        _processor.ProcessData(@event.FullPath, stoppingToken);
+        processed = _processor.ProcessData(@event.Name!, @event.FullPath, stoppingToken);
       }
       catch (Exception ex)
       {
@@ -30,7 +32,7 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
         continue;
       }
 
-      _logger.LogInformation("[{date}] {fileName} processed by worker.", $"{DateTime.Now:O}", @event.Name);
+      if (processed) _logger.LogInformation("[{date}] {fileName} processed by worker.", $"{DateTime.Now:O}", @event.Name);
     }
   }
 

@@ -2,6 +2,6 @@ namespace LegoScraper.Interfaces
 {
     public interface IProcessor
     {
-        public void ProcessData(string path, CancellationToken token);
+        public bool ProcessData(string fileName, string path, CancellationToken token);
     }
 }

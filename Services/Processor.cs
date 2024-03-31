@@ -18,7 +18,7 @@ namespace LegoScraper.Services
         private readonly IScraperWindow _scraperWindow = scraperWindow;
         private bool ClickedCookieButton { get; set; } = false;
 
-        public void ProcessData(string path, CancellationToken token)
+        public bool ProcessData(string fileName, string path, CancellationToken token)
         {
             var isMiniFig = path.Contains("mini-fig");
             List<CsvRecord> data;
@@ -31,16 +31,16 @@ namespace LegoScraper.Services
             {
                 _logger.LogDebug("{ex}", ex);
                 _logger.LogError("Error reading CSV file {path}", path);
-                return;
+                return false;
             }
 
             if (data == null || data.Count == 0)
             {
                 _logger.LogWarning("No data to process.");
-                return;
+                return false;
             }
 
-            var file = isMiniFig ? Constants.MiniFigCsvFile : Constants.LegoSetCsvFile;
+            var file = fileName.Replace(".csv", "_updated.csv");
             using var writer = new StreamWriter(file, false);
 
             writer.WriteLine("Item Number,Condition,New,Used");
@@ -57,7 +57,7 @@ namespace LegoScraper.Services
                 if (token.IsCancellationRequested) break;
 
                 context.Properties.Set(ResilienceKeys.ItemNumber, record.ItemNumber);
-                _scraperWindow.Refresh(progress * 100 / progressTotal, $"Processing {record.ItemNumber}");
+                _scraperWindow.Refresh(progress * 100 / progressTotal, $"Processing {record.ItemNumber} ({progress + 1} of {progressTotal})");
 
                 try
                 {
@@ -76,6 +76,12 @@ namespace LegoScraper.Services
             }
 
             ResilienceContextPool.Shared.Return(context);
+
+            var success = progress == progressTotal;
+
+            if (success) _scraperWindow.Refresh(100, $"Processing complete for {fileName}.");
+
+            return progress == progressTotal;
         }
 
         private LegoRecord GetData(bool isMiniFig, CsvRecord record)
