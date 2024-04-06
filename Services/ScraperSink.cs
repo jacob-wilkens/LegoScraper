@@ -1,16 +1,34 @@
-using LegoScraper.Interfaces;
 using Serilog.Core;
 using Serilog.Events;
+using Spectre.Console;
 
 namespace LegoScraper.Services
 {
-    public class ScraperSink(IScraperWindow scraperWindow) : ILogEventSink
+    public class ScraperSink() : ILogEventSink
     {
-        private readonly IScraperWindow _scraperWindow = scraperWindow;
-
         public void Emit(LogEvent logEvent)
         {
-            _scraperWindow.LogContent(logEvent);
+            var color = GetColorString(logEvent.Level);
+            var message = logEvent.RenderMessage();
+            var timeMessage = logEvent.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
+
+            var messageMarkup = new Markup($"{timeMessage}) {message}", new Style(color));
+
+            AnsiConsole.Write(messageMarkup);
+            if (logEvent.Level != LogEventLevel.Debug) AnsiConsole.WriteLine();
+        }
+
+        private static Color GetColorString(LogEventLevel level)
+        {
+            return level switch
+            {
+                LogEventLevel.Debug => Color.Blue,
+                LogEventLevel.Information => Color.White,
+                LogEventLevel.Warning => Color.Yellow,
+                LogEventLevel.Error => Color.Red,
+                LogEventLevel.Fatal => Color.Red,
+                _ => Color.White
+            };
         }
     }
 }

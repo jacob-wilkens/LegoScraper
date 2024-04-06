@@ -1,6 +1,8 @@
 using LegoScraper.Interfaces;
+using LegoScraper.Utils;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Spectre.Console;
 
 namespace LegoScraper.Services;
 
@@ -17,28 +19,40 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
     while (!stoppingToken.IsCancellationRequested)
     {
       var @event = await _queue.Consume(stoppingToken);
-      await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
-      _logger.LogInformation("[{date}] {fileName} arrived to worker.", $"{DateTime.Now:O}", @event.Name);
 
-      bool processed;
+      _logger.LogInformation("{fileName} arrived to worker.", @event.Name);
+      await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+
+      var progress = AnsiConsole.Progress();
+      progress.RenderHook = Configuration.RenderProgress;
 
       try
       {
-        processed = _processor.ProcessData(@event.Name!, @event.FullPath, stoppingToken);
+        progress
+        .Columns(
+        [
+          new TaskDescriptionColumn(),
+          new ProgressBarColumn(),
+          new PercentageColumn(),
+          new ElapsedTimeColumn(),
+          new SpinnerColumn()
+        ])
+        .Start(ctx =>
+        {
+          var task = ctx.AddTask(@event.Name!);
+          _processor.ProcessData(@event.Name!, @event.FullPath, task, stoppingToken);
+        });
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "[{date}] {fileName} could not be processed by worker.", $"{DateTime.Now:O}", @event.Name);
-        continue;
+        _logger.LogError(ex, "{fileName} could not be processed by worker.", @event.Name);
       }
-
-      if (processed) _logger.LogInformation("[{date}] {fileName} processed by worker.", $"{DateTime.Now:O}", @event.Name);
     }
   }
 
   public override async Task StopAsync(CancellationToken cancellationToken)
   {
-    _logger.LogDebug("Worker stopping at: {time}", DateTimeOffset.Now);
+    _logger.LogDebug("Worker stopping");
     await base.StopAsync(cancellationToken);
   }
 }

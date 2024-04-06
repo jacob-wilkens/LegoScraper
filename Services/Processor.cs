@@ -8,17 +8,17 @@ using LegoScraper.Utils;
 using Microsoft.Extensions.Logging;
 using OpenQA.Selenium;
 using Polly;
+using Spectre.Console;
 
 namespace LegoScraper.Services
 {
-    public class Processor(ILogger<Processor> logger, IWebDriver driver, IScraperWindow scraperWindow) : IProcessor
+    public class Processor(ILogger<Processor> logger, IWebDriver driver) : IProcessor
     {
         private readonly ILogger<Processor> _logger = logger;
         private readonly IWebDriver _driver = driver;
-        private readonly IScraperWindow _scraperWindow = scraperWindow;
         private bool ClickedCookieButton { get; set; } = false;
 
-        public bool ProcessData(string fileName, string path, CancellationToken token)
+        public void ProcessData(string fileName, string path, ProgressTask task, CancellationToken token)
         {
             var isMiniFig = path.Contains("mini-fig");
             List<CsvRecord> data;
@@ -31,13 +31,13 @@ namespace LegoScraper.Services
             {
                 _logger.LogDebug("{ex}", ex);
                 _logger.LogError("Error reading CSV file {path}", path);
-                return false;
+                return;
             }
 
             if (data == null || data.Count == 0)
             {
                 _logger.LogWarning("No data to process.");
-                return false;
+                return;
             }
 
             var file = fileName.Replace(".csv", "_updated.csv");
@@ -57,7 +57,14 @@ namespace LegoScraper.Services
                 if (token.IsCancellationRequested) break;
 
                 context.Properties.Set(ResilienceKeys.ItemNumber, record.ItemNumber);
-                _scraperWindow.Refresh(progress * 100 / progressTotal, $"Processing {record.ItemNumber} ({progress + 1} of {progressTotal})");
+
+                task.State.Update<ProgressTaskStruct>("item", _ =>
+                {
+                    _.ItemNumber = record.ItemNumber;
+                    _.CurrentIteration = (progress + 1).ToString();
+                    _.TotalIterations = progressTotal.ToString();
+                    return _;
+                });
 
                 try
                 {
@@ -73,15 +80,10 @@ namespace LegoScraper.Services
                 }
 
                 progress += 1;
+                task.Value = progress * 100 / progressTotal;
             }
 
             ResilienceContextPool.Shared.Return(context);
-
-            var success = progress == progressTotal;
-
-            if (success) _scraperWindow.Refresh(100, $"Processing complete for {fileName}.");
-
-            return progress == progressTotal;
         }
 
         private LegoRecord GetData(bool isMiniFig, CsvRecord record)
@@ -137,7 +139,7 @@ namespace LegoScraper.Services
         private List<string> GetPrices(string itemNumber, bool isMiniFig, string condition)
         {
             var prices = isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition);
-            _logger.LogDebug("Item Number {i}: New price: {newPrice}, Used price: {usedPrice}", itemNumber, prices[0], prices[1]);
+            _logger.LogDebug("Item Number {itemNumber} New price: {newPrice}, Used price: {usedPrice}", itemNumber, prices[0], prices[1]);
 
             return prices;
         }
@@ -167,5 +169,12 @@ namespace LegoScraper.Services
 
             return csv.GetRecords<CsvRecord>().ToList();
         }
+    }
+
+    public struct ProgressTaskStruct(string value)
+    {
+        public string ItemNumber { get; set; } = value ?? throw new ArgumentNullException(nameof(value));
+        public string CurrentIteration { get; set; }
+        public string TotalIterations { get; set; }
     }
 }

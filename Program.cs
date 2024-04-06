@@ -7,9 +7,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using Serilog;
 
-var scraperWindow = new ScraperWindow();
-
-Log.Logger = Configuration.SetupLogging(scraperWindow);
+Log.Logger = Configuration.SetupLogging();
 
 using var host = new HostBuilder()
          .ConfigureServices((hostContext, services) =>
@@ -19,7 +17,6 @@ using var host = new HostBuilder()
            services.AddSingleton<Queue>();
            services.AddSingleton<IProcessor, Processor>();
            services.AddSingleton<IWebDriver, ChromeDriver>((_) => Configuration.SetupChromeDriver());
-           services.AddSingleton<IScraperWindow>(scraperWindow);
          })
         .UseSerilog()
         .Build();

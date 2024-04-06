@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using LegoScraper.Interfaces;
-using LegoScraper.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace LegoScraper.Services
@@ -39,7 +38,7 @@ namespace LegoScraper.Services
 
             if (!CsvExtension.IsMatch(e.Name))
             {
-                _logger.LogWarning($"Cannot process the file because it is not a CSV and does not match the pattern 'sets*.csv' or 'mini-fig*.csv'. File : {e.Name}");
+                _logger.LogWarning("Cannot process the file because it is not a CSV and does not match the pattern 'sets*.csv' or 'mini-fig*.csv'. File : {file}", e.Name);
                 return;
             }
 

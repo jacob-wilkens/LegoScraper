@@ -1,4 +1,3 @@
-using LegoScraper.Interfaces;
 using LegoScraper.Models;
 using LegoScraper.Services;
 using Microsoft.Extensions.Logging;
@@ -8,18 +7,20 @@ using Polly;
 using Polly.Retry;
 using Serilog;
 using Serilog.Events;
+using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace LegoScraper.Utils
 {
     public static class Configuration
     {
-        public static Serilog.ILogger SetupLogging(IScraperWindow scraperWindow)
+        public static Serilog.ILogger SetupLogging()
         {
             return new LoggerConfiguration()
-                  .MinimumLevel.Debug()
+                  .MinimumLevel.Information()
                   .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                   .Enrich.FromLogContext()
-                  .WriteTo.Sink(new ScraperSink(scraperWindow))
+                  .WriteTo.Sink(new ScraperSink())
                   .Filter.ByExcluding(FilterLogMessage)
                   .CreateLogger();
         }
@@ -67,6 +68,22 @@ namespace LegoScraper.Utils
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
 
             return driver;
+        }
+
+        public static IRenderable RenderProgress(IRenderable renderable, IEnumerable<ProgressTask> tasks)
+        {
+            var task = tasks.FirstOrDefault();
+            if (task == null) return renderable;
+
+            var state = task.State.Get<ProgressTaskStruct>("item");
+
+            var header = new Grid()
+            .AddColumns(new GridColumn().Width(70))
+            .AddRow(new Panel($"Processing {state.ItemNumber} ({state.CurrentIteration} of {state.TotalIterations})").RoundedBorder().Expand());
+
+            var body = new Grid().AddColumns(new GridColumn()).AddRow(renderable);
+
+            return new Rows(header, body);
         }
     }
 }
