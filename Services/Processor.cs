@@ -1,6 +1,3 @@
-using System.Globalization;
-using CsvHelper;
-using CsvHelper.Configuration;
 using LegoScraper.Interfaces;
 using LegoScraper.Models;
 using LegoScraper.Pages;
@@ -18,27 +15,9 @@ namespace LegoScraper.Services
         private readonly IWebDriver _driver = driver;
         private bool ClickedCookieButton { get; set; } = false;
 
-        public void ProcessData(string fileName, string path, ProgressTask task, CancellationToken token)
+        public void ProcessData(string fileName, List<CsvRecord> data, ProgressTask task, CancellationToken token)
         {
-            var isMiniFig = path.Contains("mini-fig");
-            List<CsvRecord> data;
-
-            try
-            {
-                data = ReadCsvData(path);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug("{ex}", ex);
-                _logger.LogError("Error reading CSV file {path}", path);
-                return;
-            }
-
-            if (data == null || data.Count == 0)
-            {
-                _logger.LogWarning("No data to process.");
-                return;
-            }
+            var isMiniFig = fileName.Contains("mini-fig");
 
             var file = fileName.Replace(".csv", "_updated.csv");
             using var writer = new StreamWriter(file, false);
@@ -158,16 +137,6 @@ namespace LegoScraper.Services
             _logger.LogDebug("Item Number {itemNumber}: Used price: {usedPrice}", itemNumber, usedPrice);
 
             return usedPrice;
-        }
-
-        private static List<CsvRecord> ReadCsvData(string path)
-        {
-            var config = new CsvConfiguration(CultureInfo.InvariantCulture);
-
-            using var reader = new StreamReader(path);
-            using var csv = new CsvReader(reader, config);
-
-            return csv.GetRecords<CsvRecord>().ToList();
         }
     }
 

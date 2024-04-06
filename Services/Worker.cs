@@ -1,4 +1,5 @@
 using LegoScraper.Interfaces;
+using LegoScraper.Models;
 using LegoScraper.Utils;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,24 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
       _logger.LogInformation("{fileName} arrived to worker.", @event.Name);
       await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
 
+      List<CsvRecord> data;
+      try
+      {
+        data = LegoReader.ReadCsvData(@event.FullPath);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogDebug("{ex}", ex);
+        _logger.LogError("Error reading CSV file {path}", @event.FullPath);
+        continue;
+      }
+
+      if (data == null || data.Count == 0)
+      {
+        _logger.LogWarning("No data to process.");
+        continue;
+      }
+
       var progress = AnsiConsole.Progress();
       progress.RenderHook = Configuration.RenderProgress;
 
@@ -40,7 +59,7 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
         .Start(ctx =>
         {
           var task = ctx.AddTask(@event.Name!);
-          _processor.ProcessData(@event.Name!, @event.FullPath, task, stoppingToken);
+          _processor.ProcessData(@event.Name!, data, task, stoppingToken);
         });
       }
       catch (Exception ex)

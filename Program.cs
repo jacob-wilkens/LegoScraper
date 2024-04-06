@@ -21,8 +21,6 @@ using var host = new HostBuilder()
         .UseSerilog()
         .Build();
 
-var driver = host.Services.GetRequiredService<IWebDriver>();
-
 try
 {
   await host.RunAsync();
@@ -33,6 +31,5 @@ catch (Exception ex)
 }
 finally
 {
-  driver.Quit();
   Log.CloseAndFlush();
 }
