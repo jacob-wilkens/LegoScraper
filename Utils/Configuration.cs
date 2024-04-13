@@ -1,8 +1,6 @@
 using LegoScraper.Models;
 using LegoScraper.Services;
 using Microsoft.Extensions.Logging;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using Polly;
 using Polly.Retry;
 using Serilog;
@@ -32,10 +30,7 @@ namespace LegoScraper.Utils
             return new ResiliencePipelineBuilder()
                 .AddRetry(new RetryStrategyOptions()
                 {
-                    ShouldHandle = new PredicateBuilder()
-                  .Handle<NoSuchElementException>()
-                  .Handle<WebDriverException>()
-                  .Handle<StaleElementReferenceException>(),
+                    ShouldHandle = new PredicateBuilder().Handle<Exception>(),
                     MaxRetryAttempts = maxRetryAttempts,
                     OnRetry = args =>
                     {
@@ -52,22 +47,6 @@ namespace LegoScraper.Utils
             var message = logEvent.RenderMessage();
 
             return message.Contains("Hosting environment") || message.Contains("Content root path");
-        }
-
-        public static ChromeDriver SetupChromeDriver()
-        {
-            var options = new ChromeOptions();
-            options.AddArgument("--headless=new");
-            options.AddArgument("--log-level=3");
-            options.AddArgument("--no-sandbox");
-
-            var service = ChromeDriverService.CreateDefaultService();
-            service.SuppressInitialDiagnosticInformation = true;
-
-            var driver = new ChromeDriver(service, options);
-            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-
-            return driver;
         }
 
         public static IRenderable RenderProgress(IRenderable renderable, IEnumerable<ProgressTask> tasks)

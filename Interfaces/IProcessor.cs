@@ -15,6 +15,6 @@ namespace LegoScraper.Interfaces
         /// <param name="data">The data to process.</param>
         /// <param name="task">The progress task associated with the data processing.</param>
         /// <param name="token">A cancellation token that can be used to cancel the data processing.</param>
-        void ProcessData(string fileName, List<CsvRecord> data, ProgressTask task, CancellationToken token);
+        Task ProcessData(string fileName, List<CsvRecord> data, ProgressTask task, CancellationToken token);
     }
 }

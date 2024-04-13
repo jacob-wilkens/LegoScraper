@@ -14,6 +14,11 @@ namespace LegoScraper.Services
 
             var messageMarkup = new Markup($"{timeMessage}) {message}", new Style(color));
 
+            if (logEvent.Level == LogEventLevel.Error && logEvent.Exception != null)
+            {
+                AnsiConsole.WriteException(logEvent.Exception, ExceptionFormats.ShortenEverything);
+            }
+
             AnsiConsole.Write(messageMarkup);
             if (logEvent.Level != LogEventLevel.Debug) AnsiConsole.WriteLine();
         }

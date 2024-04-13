@@ -47,7 +47,7 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
 
       try
       {
-        progress
+        await progress
         .Columns(
         [
           new TaskDescriptionColumn(),
@@ -56,10 +56,10 @@ public class Worker(ILogger<Worker> logger, IWatcherService watcher, Queue queue
           new ElapsedTimeColumn(),
           new SpinnerColumn()
         ])
-        .Start(ctx =>
+        .StartAsync(async (ctx) =>
         {
           var task = ctx.AddTask(@event.Name!);
-          _processor.ProcessData(@event.Name!, data, task, stoppingToken);
+          await _processor.ProcessData(@event.Name!, data, task, stoppingToken);
         });
       }
       catch (Exception ex)

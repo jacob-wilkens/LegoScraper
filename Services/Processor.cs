@@ -1,21 +1,18 @@
 using LegoScraper.Interfaces;
 using LegoScraper.Models;
-using LegoScraper.Pages;
 using LegoScraper.Utils;
 using Microsoft.Extensions.Logging;
-using OpenQA.Selenium;
 using Polly;
 using Spectre.Console;
 
 namespace LegoScraper.Services
 {
-    public class Processor(ILogger<Processor> logger, IWebDriver driver) : IProcessor
+    public class Processor(ILogger<Processor> logger, ILegoClient legoClient) : IProcessor
     {
         private readonly ILogger<Processor> _logger = logger;
-        private readonly IWebDriver _driver = driver;
-        private bool ClickedCookieButton { get; set; } = false;
+        private readonly ILegoClient _legoClient = legoClient;
 
-        public void ProcessData(string fileName, List<CsvRecord> data, ProgressTask task, CancellationToken token)
+        public async Task ProcessData(string fileName, List<CsvRecord> data, ProgressTask task, CancellationToken token)
         {
             var isMiniFig = fileName.Contains("mini-fig");
 
@@ -47,10 +44,10 @@ namespace LegoScraper.Services
 
                 try
                 {
-                    var entry = _pipeline.Execute((ctx) => GetData(isMiniFig, record), context);
+                    var entry = await _pipeline.ExecuteAsync(async (ctx) => await GetData(isMiniFig, record), context);
                     writer.WriteLine($"{entry.ItemNumber},{entry.Condition},{entry.New},{entry.Used}");
                     writer.Flush();
-                    Thread.Sleep(2_500);
+                    await Task.Delay(TimeSpan.FromSeconds(1), token);
                 }
                 catch (Exception ex)
                 {
@@ -65,7 +62,7 @@ namespace LegoScraper.Services
             ResilienceContextPool.Shared.Return(context);
         }
 
-        private LegoRecord GetData(bool isMiniFig, CsvRecord record)
+        private async Task<LegoRecord> GetData(bool isMiniFig, CsvRecord record)
         {
             var data = new LegoRecord
             {
@@ -75,21 +72,7 @@ namespace LegoScraper.Services
                 Used = Constants.EmptyRecord
             };
 
-            var url = isMiniFig ? Constants.GetMiniFigUri(record.ItemNumber) : Constants.GetLegoSetUri(record.ItemNumber);
-            _driver.Navigate().GoToUrl(url);
-
-            // Click the cookie button if it hasn't been clicked yet
-            if (!ClickedCookieButton)
-            {
-                Web.WaitAndClick(_driver, Constants.CookieButton);
-                ClickedCookieButton = true;
-            }
-
-            if (_driver.PageSource.Contains("Item Not Found") || _driver.PageSource.Contains("No Item(s) were found. Please try again!"))
-            {
-                _logger.LogDebug("Item not found: {itemNumber}", record.ItemNumber);
-                return data;
-            }
+            var url = (isMiniFig ? Constants.GetMiniFigUri(record.ItemNumber) : Constants.GetLegoSetUri(record.ItemNumber)).ToString();
 
             string newPrice = Constants.EmptyRecord;
             string usedPrice = Constants.EmptyRecord;
@@ -97,15 +80,15 @@ namespace LegoScraper.Services
             switch (record.Condition)
             {
                 case "B":
-                    var prices = GetPrices(record.ItemNumber, isMiniFig, record.Condition);
+                    var prices = await GetPrices(url, record.ItemNumber, record.Condition);
                     newPrice = prices[0];
                     usedPrice = prices[1];
                     break;
                 case "N":
-                    newPrice = GetNewPrice(record.ItemNumber, isMiniFig, record.Condition);
+                    newPrice = await GetNewPrice(url, record.ItemNumber, record.Condition);
                     break;
                 case "U":
-                    usedPrice = GetUsedPrice(record.ItemNumber, isMiniFig, record.Condition);
+                    usedPrice = await GetUsedPrice(url, record.ItemNumber, record.Condition);
                     break;
             }
 
@@ -115,28 +98,28 @@ namespace LegoScraper.Services
             return data;
         }
 
-        private List<string> GetPrices(string itemNumber, bool isMiniFig, string condition)
+        private async Task<List<string>> GetPrices(string url, string itemNumber, string condition)
         {
-            var prices = isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition);
+            var prices = await _legoClient.Scrape(url, condition);
             _logger.LogDebug("Item Number {itemNumber} New price: {newPrice}, Used price: {usedPrice}", itemNumber, prices[0], prices[1]);
 
             return prices;
         }
 
-        private string GetNewPrice(string itemNumber, bool isMiniFig, string condition)
+        private async Task<string> GetNewPrice(string url, string itemNumber, string condition)
         {
-            var newPrice = (isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition))[0];
+            var newPrice = await _legoClient.Scrape(url, condition);
             _logger.LogDebug("Item Number {itemNumber}: New price: {newPrice}", itemNumber, newPrice);
 
-            return newPrice;
+            return newPrice.FirstOrDefault() ?? Constants.EmptyRecord;
         }
 
-        private string GetUsedPrice(string itemNumber, bool isMiniFig, string condition)
+        private async Task<string> GetUsedPrice(string url, string itemNumber, string condition)
         {
-            var usedPrice = (isMiniFig ? MiniFigPage.Scrape(_driver, condition) : LegoSetPage.Scrape(_driver, condition))[0];
+            var usedPrice = await _legoClient.Scrape(url, condition);
             _logger.LogDebug("Item Number {itemNumber}: Used price: {usedPrice}", itemNumber, usedPrice);
 
-            return usedPrice;
+            return usedPrice.FirstOrDefault() ?? Constants.EmptyRecord;
         }
     }
 

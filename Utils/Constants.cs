@@ -1,13 +1,9 @@
-using OpenQA.Selenium;
-
 namespace LegoScraper.Utils
 {
     public static class Constants
     {
         public const string EmptyRecord = "N/A";
-        public const string BaseUrl = "https://www.bricklink.com/v2/catalog/catalogitem.page";
-        public static By CookieButton => By.XPath("//div[@id='js-btn-section']//button[contains(text(),'Just necessary')]");
-
+        public const string BaseUrl = "https://www.bricklink.com/catalogPG.asp";
         public static Uri GetLegoSetUri(string id)
         {
             var uriBuilder = new UriBuilder(BaseUrl)
