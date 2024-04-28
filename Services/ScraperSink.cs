@@ -20,7 +20,7 @@ namespace LegoScraper.Services
             }
 
             AnsiConsole.Write(messageMarkup);
-            if (logEvent.Level != LogEventLevel.Debug) AnsiConsole.WriteLine();
+            AnsiConsole.WriteLine();
         }
 
         private static Color GetColorString(LogEventLevel level)

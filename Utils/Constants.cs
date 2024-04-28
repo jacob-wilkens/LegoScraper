@@ -8,7 +8,7 @@ namespace LegoScraper.Utils
         {
             var uriBuilder = new UriBuilder(BaseUrl)
             {
-                Query = $"S={id}"
+                Query = $"S={id}-1"
             };
 
             return uriBuilder.Uri;

@@ -10,7 +10,7 @@ namespace LegoScraper.Services
         private readonly FileSystemWatcher _watcher;
         private readonly Queue _queue;
         private static string Name => nameof(WatcherService);
-        private static Regex CsvExtension = new Regex(@"(sets|mini-figs).*\.csv$");
+        private static Regex CsvExtension = new Regex(@"(sets|mini-fig).*\.csv$");
         public List<string> Files { get; } = [];
 
         public WatcherService(ILogger<WatcherService> logger, Queue queue)

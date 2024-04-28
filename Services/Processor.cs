@@ -47,7 +47,7 @@ namespace LegoScraper.Services
                     var entry = await _pipeline.ExecuteAsync(async (ctx) => await GetData(isMiniFig, record), context);
                     writer.WriteLine($"{entry.ItemNumber},{entry.Condition},{entry.New},{entry.Used}");
                     writer.Flush();
-                    await Task.Delay(TimeSpan.FromSeconds(1), token);
+                    await Task.Delay(TimeSpan.FromSeconds(3), token);
                 }
                 catch (Exception ex)
                 {
@@ -109,7 +109,7 @@ namespace LegoScraper.Services
         private async Task<string> GetNewPrice(string url, string itemNumber, string condition)
         {
             var newPrice = await _legoClient.Scrape(url, condition);
-            _logger.LogDebug("Item Number {itemNumber}: New price: {newPrice}", itemNumber, newPrice);
+            _logger.LogDebug("Item Number {itemNumber}: New price: {newPrice}", itemNumber, newPrice[0]);
 
             return newPrice.FirstOrDefault() ?? Constants.EmptyRecord;
         }
@@ -117,7 +117,7 @@ namespace LegoScraper.Services
         private async Task<string> GetUsedPrice(string url, string itemNumber, string condition)
         {
             var usedPrice = await _legoClient.Scrape(url, condition);
-            _logger.LogDebug("Item Number {itemNumber}: Used price: {usedPrice}", itemNumber, usedPrice);
+            _logger.LogDebug("Item Number {itemNumber}: Used price: {usedPrice}", itemNumber, usedPrice[0]);
 
             return usedPrice.FirstOrDefault() ?? Constants.EmptyRecord;
         }

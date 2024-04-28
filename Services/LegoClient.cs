@@ -11,28 +11,16 @@ namespace LegoScraper.Services
         private readonly HttpClient _client = client;
         private readonly ILogger<LegoClient> _logger = logger;
         private readonly Regex _pattern = new(@"Avg Price:US \$(\d+\.\d+)");
+        private readonly Regex _pattern2 = new(@"Avg Price:\s(\d+\.\d+)");
 
         public async Task<List<string>> Scrape(string url, string condition)
         {
-            var prices = new List<string>();
+            var response = await _client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
 
-            try
-            {
-                var response = await _client.GetAsync(url);
-                response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
 
-                var content = await response.Content.ReadAsStringAsync();
-
-                return ParseContent(content, condition);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Error scraping {url}: {ex}", url, ex);
-                prices.Add(Constants.EmptyRecord);
-                prices.Add(Constants.EmptyRecord);
-            }
-
-            return prices;
+            return ParseContent(content, condition);
         }
 
         private List<string> ParseContent(string content, string condition)
@@ -67,12 +55,22 @@ namespace LegoScraper.Services
 
             foreach (var element in elements)
             {
-                var priceText = Regex.Unescape(element.InnerText).Replace("&nbsp;", " ");
+                var priceText = Regex.Unescape(element.InnerText).Replace("&nbsp;", " ").Replace("BGN", "");
                 var match = _pattern.Match(priceText);
+                var match2 = _pattern2.Match(priceText);
 
-                var price = match.Success ? match.Groups[1].Value : Constants.EmptyRecord;
-
-                prices.Add(price);
+                if (match.Success)
+                {
+                    prices.Add(match.Groups[1].Value);
+                }
+                else if (match2.Success)
+                {
+                    prices.Add(match2.Groups[1].Value);
+                }
+                else
+                {
+                    prices.Add(Constants.EmptyRecord);
+                }
             }
 
             return prices;
